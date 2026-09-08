@@ -13,23 +13,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Download & Extract Toolchain
+    - name: Install ARMv7 cross compiler
       run: |
-        # 创建工具链目录
-        mkdir -p $HOME/toolchain
-        cd $HOME/toolchain
-        
-        # 使用更稳定、速度快的 musl-cross 工具链
-        URL="https://more.musl.cc/10/x86_64-linux-musl/armv7l-linux-musleabihf-cross.tgz"
-        echo "Downloading toolchain from $URL..."
-        curl -sSL "$URL" -o toolchain.tgz
-        
-        # 解压并校验
-        tar -zxf toolchain.tgz
-        rm toolchain.tgz
-        
-        # 将工具链路径添加到系统 PATH
-        echo "$HOME/toolchain/armv7l-linux-musleabihf-cross/bin" >> $GITHUB_PATH
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-linux-gnueabihf strip-nongnu
 
     - name: Clone microsocks source code
       run: |
@@ -38,10 +25,10 @@ jobs:
     - name: Compile microsocks statically
       run: |
         cd microsocks
-        # 使用纯静态链接编译
-        make CC=armv7l-linux-musleabihf-gcc LDFLAGS="-static"
+        # 使用系统自带的 arm-linux-gnueabihf-gcc 进行全静态链接编译
+        make CC=arm-linux-gnueabihf-gcc LDFLAGS="-static"
         # 剥离符号表以压缩文件体积
-        armv7l-linux-musleabihf-strip microsocks
+        arm-linux-gnueabihf-strip microsocks
 
     - name: Check binary properties
       run: |
