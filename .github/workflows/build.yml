@@ -1,0 +1,49 @@
+name: Build microsocks for ARMv7
+
+on:
+  workflow_dispatch: # 支持在 GitHub 页面手动点击触发编译
+  push:
+    branches: [ "main", "master" ] # 当提交代码到主分支时触发
+
+jobs:
+  build-armv7:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install musl toolchain for ARMv7
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-linux-gnueabihf musl-tools
+
+    - name: Download musl-cross toolchain (Static compilation)
+      run: |
+        # 下载完全静态的 armv7 musl 交叉编译器
+        wget -q https://musl.cc/armv7l-linux-musleabihf-cross.tgz
+        tar -zxvf armv7l-linux-musleabihf-cross.tgz
+        echo "$GITHUB_WORKSPACE/armv7l-linux-musleabihf-cross/bin" >> $GITHUB_PATH
+
+    - name: Clone microsocks source code
+      run: |
+        git clone https://github.com/rofl0r/microsocks.git
+        
+    - name: Compile microsocks statically
+      run: |
+        cd microsocks
+        # 使用纯静态链接编译
+        make CC=armv7l-linux-musleabihf-gcc LDFLAGS="-static"
+        # 剥离符号表压缩二进制文件体积
+        armv7l-linux-musleabihf-strip microsocks
+        
+    - name: Check binary properties
+      run: |
+        file microsocks/microsocks
+        ls -lh microsocks/microsocks
+
+    - name: Upload compiled binary as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: microsocks-armv7l-static
+        path: microsocks/microsocks
