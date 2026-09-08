@@ -16,7 +16,7 @@ jobs:
     - name: Install ARMv7 cross compiler
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-arm-linux-gnueabihf strip-nongnu
+        sudo apt-get install -y gcc-arm-linux-gnueabihf
 
     - name: Clone microsocks source code
       run: |
@@ -25,9 +25,9 @@ jobs:
     - name: Compile microsocks statically
       run: |
         cd microsocks
-        # 使用系统自带的 arm-linux-gnueabihf-gcc 进行全静态链接编译
+        # 使用全静态链接编译
         make CC=arm-linux-gnueabihf-gcc LDFLAGS="-static"
-        # 剥离符号表以压缩文件体积
+        # 使用工具链自带的 strip 剥离符号表以压缩体积
         arm-linux-gnueabihf-strip microsocks
 
     - name: Check binary properties
