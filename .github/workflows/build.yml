@@ -13,30 +13,36 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install ARMv7 cross compiler
+    - name: Install ARM cross compilers
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-arm-linux-gnueabihf
+        # 同时安装软浮点(armel)和硬浮点(armhf)编译器
+        sudo apt-get install -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
 
     - name: Clone microsocks source code
       run: |
         git clone https://github.com/rofl0r/microsocks.git
 
-    - name: Compile microsocks statically
+    - name: Compile compatibility binaries
       run: |
         cd microsocks
-        # 使用全静态链接编译
-        make CC=arm-linux-gnueabihf-gcc LDFLAGS="-static"
-        # 使用工具链自带的 strip 剥离符号表以压缩体积
+        
+        # 1. 编译软浮点通用版 (armel / softfp, 针对不带 NEON 的光猫固件, 推荐首选)
+        make clean
+        make CC=arm-linux-gnueabi-gcc CFLAGS="-O2 -march=armv7-a -mfloat-abi=softfp" LDFLAGS="-static"
+        arm-linux-gnueabi-strip microsocks
+        mv microsocks microsocks-armv7-softfp
+
+        # 2. 编译无 NEON 的硬浮点版 (armhf / vfpv3, 针对仅支持纯硬浮点的固件)
+        make clean
+        make CC=arm-linux-gnueabihf-gcc CFLAGS="-O2 -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard" LDFLAGS="-static"
         arm-linux-gnueabihf-strip microsocks
+        mv microsocks microsocks-armv7-vfpv3
 
-    - name: Check binary properties
-      run: |
-        file microsocks/microsocks
-        ls -lh microsocks/microsocks
-
-    - name: Upload compiled binary as Artifact
+    - name: Upload compiled binaries
       uses: actions/upload-artifact@v4
       with:
-        name: microsocks-armv7l-static
-        path: microsocks/microsocks
+        name: microsocks-armv7-variants
+        path: |
+          microsocks/microsocks-armv7-softfp
+          microsocks/microsocks-armv7-vfpv3
